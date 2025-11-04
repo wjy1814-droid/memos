@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>메모 공유 앱 - 구름 메모장</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="sky-background">
+        <!-- 메모 작성 영역 (위쪽) -->
+        <div class="memo-input-container">
+            <h1 class="app-title">☁️ 구름 메모장 ☁️</h1>
+            <div class="input-wrapper">
+                <textarea 
+                    id="memoInput" 
+                    placeholder="메모를 작성하세요..."
+                    rows="3"
+                ></textarea>
+                <div class="button-group">
+                    <button id="addMemoBtn" class="btn btn-add">메모 추가</button>
+                    <button id="cancelBtn" class="btn btn-cancel" style="display: none;">취소</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- 메모 표시 영역 (구름 형태) -->
+        <div class="memo-container" id="memoContainer">
+            <!-- 메모들이 여기에 동적으로 추가됩니다 -->
+        </div>
+    </div>
+
+    <script src="app.js"></script>
+</body>
+</html>
+
