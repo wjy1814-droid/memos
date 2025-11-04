@@ -7,30 +7,180 @@
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
-    <div class="sky-background">
-        <!-- 메모 작성 영역 (위쪽) -->
-        <div class="memo-input-container">
-            <h1 class="app-title">☁️ 구름 메모장 ☁️</h1>
-            <div class="input-wrapper">
-                <textarea 
-                    id="memoInput" 
-                    placeholder="메모를 작성하세요..."
-                    rows="3"
-                ></textarea>
-                <div class="button-group">
-                    <button id="addMemoBtn" class="btn btn-add">메모 추가</button>
-                    <button id="cancelBtn" class="btn btn-cancel" style="display: none;">취소</button>
-                </div>
+    <!-- 로그인/회원가입 화면 -->
+    <div id="authScreen" class="auth-screen">
+        <div class="auth-container">
+            <h1 class="auth-title">☁️ 구름 메모장 ☁️</h1>
+            
+            <!-- 로그인 폼 -->
+            <div id="loginForm" class="auth-form">
+                <h2>로그인</h2>
+                <input type="email" id="loginEmail" placeholder="이메일" required>
+                <input type="password" id="loginPassword" placeholder="비밀번호 (최소 6자)" required>
+                <button id="loginBtn" class="btn btn-primary">로그인</button>
+                <p class="auth-switch">
+                    계정이 없으신가요? <a href="#" id="showRegisterBtn">회원가입</a>
+                </p>
             </div>
-        </div>
-
-        <!-- 메모 표시 영역 (구름 형태) -->
-        <div class="memo-container" id="memoContainer">
-            <!-- 메모들이 여기에 동적으로 추가됩니다 -->
+            
+            <!-- 회원가입 폼 -->
+            <div id="registerForm" class="auth-form" style="display: none;">
+                <h2>회원가입</h2>
+                <input type="text" id="registerUsername" placeholder="이름" required>
+                <input type="email" id="registerEmail" placeholder="이메일" required>
+                <input type="password" id="registerPassword" placeholder="비밀번호 (최소 6자)" required>
+                <input type="password" id="registerPasswordConfirm" placeholder="비밀번호 확인" required>
+                <button id="registerBtn" class="btn btn-primary">회원가입</button>
+                <p class="auth-switch">
+                    이미 계정이 있으신가요? <a href="#" id="showLoginBtn">로그인</a>
+                </p>
+            </div>
         </div>
     </div>
 
+    <!-- 메인 앱 화면 -->
+    <div id="appScreen" class="app-screen" style="display: none;">
+        <div class="sky-background">
+            <!-- 헤더 -->
+            <header class="app-header">
+                <div class="header-left">
+                    <h1 class="app-title">☁️ 구름 메모장</h1>
+                    <span id="currentUser" class="user-info"></span>
+                </div>
+                <div class="header-right">
+                    <button id="myGroupsBtn" class="btn btn-header">내 그룹</button>
+                    <button id="logoutBtn" class="btn btn-header">로그아웃</button>
+                </div>
+            </header>
+
+            <!-- 그룹 목록 사이드바 -->
+            <aside id="groupsSidebar" class="groups-sidebar">
+                <div class="sidebar-header">
+                    <h2>내 그룹</h2>
+                    <button id="closeSidebarBtn" class="btn-icon">✕</button>
+                </div>
+                <button id="createGroupBtn" class="btn btn-primary full-width">+ 새 그룹 만들기</button>
+                <div id="groupsList" class="groups-list">
+                    <!-- 그룹 목록이 여기에 추가됩니다 -->
+                </div>
+            </aside>
+
+            <!-- 현재 선택된 그룹 정보 -->
+            <div class="current-group-info" id="currentGroupInfo" style="display: none;">
+                <div class="group-header">
+                    <div>
+                        <h3 id="currentGroupName"></h3>
+                        <p id="currentGroupDesc"></p>
+                    </div>
+                    <div class="group-actions">
+                        <button id="inviteLinkBtn" class="btn btn-small" title="초대 링크 생성">🔗 초대</button>
+                        <button id="manageGroupBtn" class="btn btn-small">그룹 관리</button>
+                        <button id="leaveGroupBtn" class="btn btn-small btn-danger">나가기</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 메모 작성 영역 -->
+            <div class="memo-input-container">
+                <div class="input-wrapper">
+                    <textarea 
+                        id="memoInput" 
+                        placeholder="메모를 작성하세요..."
+                        rows="3"
+                    ></textarea>
+                    <div class="button-group">
+                        <button id="addMemoBtn" class="btn btn-add">메모 추가</button>
+                        <button id="cancelBtn" class="btn btn-cancel" style="display: none;">취소</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 메모 표시 영역 -->
+            <div class="memo-container" id="memoContainer">
+                <!-- 메모들이 여기에 동적으로 추가됩니다 -->
+            </div>
+        </div>
+    </div>
+
+    <!-- 그룹 생성 모달 -->
+    <div id="createGroupModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>새 그룹 만들기</h2>
+                <button class="btn-icon modal-close">✕</button>
+            </div>
+            <div class="modal-body">
+                <input type="text" id="newGroupName" placeholder="그룹 이름" required>
+                <textarea id="newGroupDesc" placeholder="그룹 설명 (선택사항)" rows="3"></textarea>
+            </div>
+            <div class="modal-footer">
+                <button id="confirmCreateGroupBtn" class="btn btn-primary">만들기</button>
+                <button class="btn btn-secondary modal-close">취소</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 초대 링크 모달 -->
+    <div id="inviteLinkModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>🔗 초대 링크</h2>
+                <button class="btn-icon modal-close">✕</button>
+            </div>
+            <div class="modal-body">
+                <p style="color: #666; margin-bottom: 15px;">
+                    이 링크를 공유하면 다른 사람들이 그룹에 참여할 수 있습니다.
+                </p>
+                <div class="invite-link-container">
+                    <input type="text" id="inviteLinkInput" readonly style="flex: 1; margin-bottom: 0;">
+                    <button id="copyInviteLinkBtn" class="btn btn-primary" style="margin-left: 10px;">
+                        📋 복사
+                    </button>
+                </div>
+                <p style="color: #999; font-size: 0.85rem; margin-top: 10px;">
+                    💡 카카오톡이나 문자로 링크를 보내보세요!
+                </p>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary modal-close">닫기</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 그룹 관리 모달 -->
+    <div id="manageGroupModal" class="modal">
+        <div class="modal-content modal-large">
+            <div class="modal-header">
+                <h2>그룹 관리</h2>
+                <button class="btn-icon modal-close">✕</button>
+            </div>
+            <div class="modal-body">
+                <div class="manage-section">
+                    <h3>그룹 정보</h3>
+                    <input type="text" id="editGroupName" placeholder="그룹 이름">
+                    <textarea id="editGroupDesc" placeholder="그룹 설명" rows="3"></textarea>
+                    <button id="updateGroupBtn" class="btn btn-primary">저장</button>
+                </div>
+                <div class="manage-section">
+                    <h3>멤버 관리</h3>
+                    <div class="add-member-form">
+                        <input type="email" id="addMemberEmail" placeholder="추가할 사용자 이메일">
+                        <button id="addMemberBtn" class="btn btn-primary">멤버 추가</button>
+                    </div>
+                    <div id="membersList" class="members-list">
+                        <!-- 멤버 목록이 여기에 추가됩니다 -->
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button id="deleteGroupBtn" class="btn btn-danger">그룹 삭제</button>
+                <button class="btn btn-secondary modal-close">닫기</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="auth.js"></script>
+    <script src="groups.js"></script>
     <script src="app.js"></script>
 </body>
 </html>
-

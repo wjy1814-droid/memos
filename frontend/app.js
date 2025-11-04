@@ -1,210 +1,194 @@
-// API 엔드포인트 설정
-// 배포 환경에서는 상대 경로, 로컬에서는 절대 경로 사용
-const API_URL = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
-    ? 'http://localhost:3000/api/memos'
-    : '/api/memos';
+// 메모 관리 스크립트
 
-// 전역 변수
+// API URL 설정
+if (typeof API_BASE_URL === 'undefined') {
+    var API_BASE_URL = window.location.hostname === 'localhost' 
+        ? 'http://localhost:3000/api' 
+        : '/api';
+}
+
+const API_URL = API_BASE_URL + '/memos';
 let editingMemoId = null;
 
-// DOM 요소
-const memoInput = document.getElementById('memoInput');
-const addMemoBtn = document.getElementById('addMemoBtn');
-const cancelBtn = document.getElementById('cancelBtn');
-const memoContainer = document.getElementById('memoContainer');
-
-// 초기화
-document.addEventListener('DOMContentLoaded', () => {
-    loadMemos();
-    
-    // 이벤트 리스너
-    addMemoBtn.addEventListener('click', handleAddOrUpdateMemo);
-    cancelBtn.addEventListener('click', handleCancelEdit);
-    
-    // Enter 키로 메모 추가 (Shift+Enter는 줄바꿈)
-    memoInput.addEventListener('keydown', (e) => {
-        if (e.key === 'Enter' && !e.shiftKey) {
-            e.preventDefault();
-            handleAddOrUpdateMemo();
-        }
-    });
-});
-
-// 메모 불러오기
+// 메모 로드
 async function loadMemos() {
     try {
         const response = await fetch(API_URL);
-        const memos = await response.json();
         
+        if (!response.ok) {
+            throw new Error('메모를 불러오는데 실패했습니다.');
+        }
+        
+        const memos = await response.json();
         displayMemos(memos);
     } catch (error) {
-        console.error('메모 불러오기 실패:', error);
-        // 서버 연결 실패 시 로컬 모드로 전환
-        displayEmptyState();
+        console.error('메모 로드 오류:', error);
+        showError('메모를 불러올 수 없습니다.');
+    }
+}
+
+// 그룹별 메모 로드
+async function loadGroupMemos(groupId) {
+    if (!groupId) {
+        loadMemos();
+        return;
+    }
+    
+    try {
+        const response = await fetch(`${API_URL}/group/${groupId}`, {
+            headers: getAuthHeaders()
+        });
+        
+        if (!response.ok) {
+            throw new Error('메모를 불러오는데 실패했습니다.');
+        }
+        
+        const memos = await response.json();
+        displayMemos(memos);
+    } catch (error) {
+        console.error('그룹 메모 로드 오류:', error);
+        showError('메모를 불러올 수 없습니다.');
     }
 }
 
 // 메모 표시
 function displayMemos(memos) {
-    memoContainer.innerHTML = '';
+    const memoContainer = document.getElementById('memoContainer');
     
     if (memos.length === 0) {
-        displayEmptyState();
+        memoContainer.innerHTML = '<p class="no-memos">아직 메모가 없습니다. 첫 메모를 작성해보세요!</p>';
         return;
     }
     
-    memos.forEach(memo => {
-        const memoElement = createMemoElement(memo);
-        memoContainer.appendChild(memoElement);
-    });
+    memoContainer.innerHTML = memos.map(memo => `
+        <div class="memo-cloud" data-memo-id="${memo.id}">
+            <div class="memo-content">
+                ${escapeHtml(memo.content)}
+            </div>
+            ${memo.author_name ? `<div class="memo-author">작성자: ${escapeHtml(memo.author_name)}</div>` : ''}
+            <div class="memo-date">${formatDate(memo.created_at)}</div>
+            <div class="memo-actions">
+                <button class="memo-btn edit-btn" onclick="editMemo(${memo.id}, '${escapeForAttribute(memo.content)}')">수정</button>
+                <button class="memo-btn delete-btn" onclick="deleteMemo(${memo.id})">삭제</button>
+            </div>
+        </div>
+    `).join('');
 }
 
-// 빈 상태 표시
-function displayEmptyState() {
-    memoContainer.innerHTML = `
-        <div class="empty-state">
-            ☁️ 첫 메모를 작성해보세요! ☁️
-        </div>
-    `;
-}
-
-// 메모 요소 생성
-function createMemoElement(memo) {
-    const memoDiv = document.createElement('div');
-    memoDiv.className = 'memo-cloud';
-    memoDiv.dataset.id = memo.id;
-    
-    const formattedDate = formatDate(memo.created_at || new Date());
-    
-    memoDiv.innerHTML = `
-        <div class="memo-content" id="content-${memo.id}">${escapeHtml(memo.content)}</div>
-        <textarea class="memo-edit-input" id="edit-${memo.id}" style="display: none;">${memo.content}</textarea>
-        <div class="memo-date">${formattedDate}</div>
-        <div class="memo-actions" id="actions-${memo.id}">
-            <button class="memo-btn btn-edit" onclick="startEdit(${memo.id})">수정</button>
-            <button class="memo-btn btn-delete" onclick="deleteMemo(${memo.id})">삭제</button>
-        </div>
-        <div class="memo-actions" id="edit-actions-${memo.id}" style="display: none;">
-            <button class="memo-btn btn-save" onclick="saveEdit(${memo.id})">저장</button>
-            <button class="memo-btn btn-cancel-edit" onclick="cancelEdit(${memo.id})">취소</button>
-        </div>
-    `;
-    
-    return memoDiv;
-}
-
-// 메모 추가 또는 수정
-async function handleAddOrUpdateMemo() {
+// 메모 추가
+async function addMemo() {
+    const memoInput = document.getElementById('memoInput');
     const content = memoInput.value.trim();
     
     if (!content) {
-        alert('메모 내용을 입력해주세요!');
+        alert('메모 내용을 입력해주세요.');
         return;
     }
     
-    if (editingMemoId) {
-        // 수정 모드
-        await updateMemo(editingMemoId, content);
-        editingMemoId = null;
-        addMemoBtn.textContent = '메모 추가';
-        cancelBtn.style.display = 'none';
-    } else {
-        // 추가 모드
-        await createMemo(content);
-    }
-    
-    memoInput.value = '';
-    memoInput.focus();
-}
-
-// 메모 생성
-async function createMemo(content) {
     try {
-        const response = await fetch(API_URL, {
+        const url = currentGroupId 
+            ? `${API_URL}/group/${currentGroupId}`
+            : API_URL;
+        
+        const headers = currentGroupId 
+            ? getAuthHeaders()
+            : { 'Content-Type': 'application/json' };
+        
+        const response = await fetch(url, {
             method: 'POST',
-            headers: {
-                'Content-Type': 'application/json'
-            },
+            headers: headers,
             body: JSON.stringify({ content })
         });
         
-        if (response.ok) {
-            await loadMemos();
-        } else {
-            throw new Error('메모 생성 실패');
+        if (!response.ok) {
+            const data = await response.json();
+            throw new Error(data.error || '메모 생성에 실패했습니다.');
         }
+        
+        memoInput.value = '';
+        
+        // 메모 다시 로드
+        if (currentGroupId) {
+            loadGroupMemos(currentGroupId);
+        } else {
+            loadMemos();
+        }
+        
+        showSuccess('메모가 추가되었습니다!');
     } catch (error) {
-        console.error('메모 생성 에러:', error);
-        alert('메모 생성에 실패했습니다. 서버 연결을 확인해주세요.');
+        console.error('메모 추가 오류:', error);
+        showError(error.message);
     }
 }
 
 // 메모 수정 시작
-function startEdit(id) {
-    const contentDiv = document.getElementById(`content-${id}`);
-    const editInput = document.getElementById(`edit-${id}`);
-    const actions = document.getElementById(`actions-${id}`);
-    const editActions = document.getElementById(`edit-actions-${id}`);
+function editMemo(id, content) {
+    editingMemoId = id;
+    const memoInput = document.getElementById('memoInput');
+    const addBtn = document.getElementById('addMemoBtn');
+    const cancelBtn = document.getElementById('cancelBtn');
     
-    contentDiv.style.display = 'none';
-    editInput.style.display = 'block';
-    actions.style.display = 'none';
-    editActions.style.display = 'flex';
+    memoInput.value = content;
+    addBtn.textContent = '수정 완료';
+    cancelBtn.style.display = 'inline-block';
     
-    editInput.focus();
+    memoInput.focus();
+    memoInput.scrollIntoView({ behavior: 'smooth', block: 'center' });
 }
 
-// 메모 수정 취소
-function cancelEdit(id) {
-    const contentDiv = document.getElementById(`content-${id}`);
-    const editInput = document.getElementById(`edit-${id}`);
-    const actions = document.getElementById(`actions-${id}`);
-    const editActions = document.getElementById(`edit-actions-${id}`);
+// 메모 수정 완료
+async function updateMemo() {
+    const memoInput = document.getElementById('memoInput');
+    const content = memoInput.value.trim();
     
-    contentDiv.style.display = 'block';
-    editInput.style.display = 'none';
-    actions.style.display = 'flex';
-    editActions.style.display = 'none';
-}
-
-// 메모 수정 저장
-async function saveEdit(id) {
-    const editInput = document.getElementById(`edit-${id}`);
-    const newContent = editInput.value.trim();
-    
-    if (!newContent) {
-        alert('메모 내용을 입력해주세요!');
+    if (!content) {
+        alert('메모 내용을 입력해주세요.');
         return;
     }
     
-    await updateMemo(id, newContent);
-}
-
-// 메모 업데이트
-async function updateMemo(id, content) {
     try {
-        const response = await fetch(`${API_URL}/${id}`, {
+        const response = await fetch(`${API_URL}/${editingMemoId}`, {
             method: 'PUT',
-            headers: {
-                'Content-Type': 'application/json'
-            },
+            headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ content })
         });
         
-        if (response.ok) {
-            await loadMemos();
-        } else {
-            throw new Error('메모 수정 실패');
+        if (!response.ok) {
+            const data = await response.json();
+            throw new Error(data.error || '메모 수정에 실패했습니다.');
         }
+        
+        cancelEdit();
+        
+        // 메모 다시 로드
+        if (currentGroupId) {
+            loadGroupMemos(currentGroupId);
+        } else {
+            loadMemos();
+        }
+        
+        showSuccess('메모가 수정되었습니다!');
     } catch (error) {
-        console.error('메모 수정 에러:', error);
-        alert('메모 수정에 실패했습니다.');
+        console.error('메모 수정 오류:', error);
+        showError(error.message);
     }
+}
+
+// 수정 취소
+function cancelEdit() {
+    editingMemoId = null;
+    const memoInput = document.getElementById('memoInput');
+    const addBtn = document.getElementById('addMemoBtn');
+    const cancelBtn = document.getElementById('cancelBtn');
+    
+    memoInput.value = '';
+    addBtn.textContent = '메모 추가';
+    cancelBtn.style.display = 'none';
 }
 
 // 메모 삭제
 async function deleteMemo(id) {
-    if (!confirm('이 메모를 삭제하시겠습니까?')) {
+    if (!confirm('정말로 이 메모를 삭제하시겠습니까?')) {
         return;
     }
     
@@ -213,23 +197,23 @@ async function deleteMemo(id) {
             method: 'DELETE'
         });
         
-        if (response.ok) {
-            await loadMemos();
-        } else {
-            throw new Error('메모 삭제 실패');
+        if (!response.ok) {
+            const data = await response.json();
+            throw new Error(data.error || '메모 삭제에 실패했습니다.');
         }
+        
+        // 메모 다시 로드
+        if (currentGroupId) {
+            loadGroupMemos(currentGroupId);
+        } else {
+            loadMemos();
+        }
+        
+        showSuccess('메모가 삭제되었습니다!');
     } catch (error) {
-        console.error('메모 삭제 에러:', error);
-        alert('메모 삭제에 실패했습니다.');
+        console.error('메모 삭제 오류:', error);
+        showError(error.message);
     }
-}
-
-// 수정 취소 (상단 입력칸)
-function handleCancelEdit() {
-    editingMemoId = null;
-    memoInput.value = '';
-    addMemoBtn.textContent = '메모 추가';
-    cancelBtn.style.display = 'none';
 }
 
 // 날짜 포맷팅
@@ -254,10 +238,67 @@ function formatDate(dateString) {
     });
 }
 
-// HTML 이스케이프 (XSS 방지)
+// HTML 이스케이프
 function escapeHtml(text) {
     const div = document.createElement('div');
     div.textContent = text;
     return div.innerHTML.replace(/\n/g, '<br>');
 }
 
+// 속성용 이스케이프
+function escapeForAttribute(text) {
+    return text.replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+}
+
+// 성공 메시지 표시
+function showSuccess(message) {
+    // 간단한 알림 (필요시 토스트 메시지로 개선 가능)
+    console.log('✅', message);
+}
+
+// 에러 메시지 표시
+function showError(message) {
+    console.error('❌', message);
+    alert(message);
+}
+
+// DOM 로드 후 이벤트 리스너 설정
+document.addEventListener('DOMContentLoaded', () => {
+    // 메모 추가/수정 버튼
+    const addMemoBtn = document.getElementById('addMemoBtn');
+    if (addMemoBtn) {
+        addMemoBtn.addEventListener('click', () => {
+            if (editingMemoId) {
+                updateMemo();
+            } else {
+                addMemo();
+            }
+        });
+    }
+    
+    // 취소 버튼
+    const cancelBtn = document.getElementById('cancelBtn');
+    if (cancelBtn) {
+        cancelBtn.addEventListener('click', cancelEdit);
+    }
+    
+    // 엔터키로 메모 추가 (Ctrl+Enter)
+    const memoInput = document.getElementById('memoInput');
+    if (memoInput) {
+        memoInput.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter' && e.ctrlKey) {
+                e.preventDefault();
+                if (editingMemoId) {
+                    updateMemo();
+                } else {
+                    addMemo();
+                }
+            }
+        });
+    }
+    
+    // 로그인 상태면 메모 로드
+    if (isLoggedIn()) {
+        loadMemos();
+    }
+});
