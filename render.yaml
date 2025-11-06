@@ -12,20 +12,14 @@ services:
         value: 3000
       - key: NODE_ENV
         value: production
-      - key: DB_HOST
-        sync: false
-      - key: DB_PORT
-        value: 5432
-      - key: DB_NAME
-        value: memo_app
-      - key: DB_USER
-        sync: false
-      - key: DB_PASSWORD
-        sync: false
+      - key: DATABASE_URL
+        fromDatabase:
+          name: memo-app-db
+          property: connectionString
 
 databases:
   - name: memo-app-db
-    databaseName: memo_app
+    databaseName: memo_app_ay5t
     user: memo_app_user
     region: singapore
     plan: free

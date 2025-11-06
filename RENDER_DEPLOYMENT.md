@@ -1,10 +1,22 @@
 # 🚀 Render 배포 가이드
 
+## ✅ 현재 Render 데이터베이스 정보
+
+**이미 생성된 PostgreSQL 데이터베이스 사용:**
+- **Database Name**: `memo_app_ay5t`
+- **User**: `memo_app_user`
+- **Host**: `dpg-d44oqqv5r7bs73b2kpk0-a`
+- **Region**: Singapore
+
+**DATABASE_URL을 웹 서비스 환경 변수에 설정하면 자동으로 연결됩니다!**
+
+---
+
 ## 사전 준비
 
 1. ✅ GitHub 계정
 2. ✅ Render 계정 (https://render.com)
-3. ✅ PostgreSQL 데이터베이스 (Render에서 자동 생성 가능)
+3. ✅ PostgreSQL 데이터베이스 (이미 생성됨)
 
 ## 📋 배포 단계
 
